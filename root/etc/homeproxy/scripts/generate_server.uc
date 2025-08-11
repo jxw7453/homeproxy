@@ -49,9 +49,6 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 		tcp_multi_path: strToBool(cfg.tcp_multi_path),
 		udp_fragment: strToBool(cfg.udp_fragment),
 		udp_timeout: cfg.udp_timeout ? (cfg.udp_timeout + 's') : null,
-		sniff: true,
-		sniff_override_destination: (cfg.sniff_override === '1'),
-		domain_strategy: cfg.domain_strategy,
 		network: cfg.network,
 
 		/* Hysteria */
@@ -138,6 +135,11 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 					region_id: cfg.tls_dns01_ali_rid,
 					api_token: cfg.tls_dns01_cf_api_token
 				} : null
+			} : null,
+			ech: (cfg.tls_ech_key) ? {
+				enabled: true,
+				key: split(cfg.tls_ech_key, '\n'),
+				// config: split(cfg.tls_ech_config, '\n')
 			} : null,
 			reality: (cfg.tls_reality === '1') ? {
 				enabled: true,

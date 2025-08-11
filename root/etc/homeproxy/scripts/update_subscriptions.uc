@@ -170,7 +170,7 @@ function parse_uri(uri) {
 				hysteria_obfs_type: params.obfs,
 				hysteria_obfs_password: params['obfs-password'],
 				tls: '1',
-				tls_insecure: params.insecure ? '1' : '0',
+				tls_insecure: (params.insecure === '1') ? '1' : '0',
 				tls_sni: params.sni
 			};
 
@@ -216,16 +216,16 @@ function parse_uri(uri) {
 				ss_userinfo = [url.username, urldecode(url.password)];
 			else if (url.username)
 				/* User info encoded with base64 */
-				ss_userinfo = split(decodeBase64Str(urldecode(url.username)), ':');
+				ss_userinfo = split(decodeBase64Str(urldecode(url.username)), ':', 2);
 
 			let ss_plugin, ss_plugin_opts;
 			if (url.search && url.searchParams.plugin) {
-				const ss_plugin_info = split(url.searchParams.plugin, ';');
+				const ss_plugin_info = split(url.searchParams.plugin, ';', 2);
 				ss_plugin = ss_plugin_info[0];
 				if (ss_plugin === 'simple-obfs')
 					/* Fix non-standard plugin name */
 					ss_plugin = 'obfs-local';
-				ss_plugin_opts = slice(ss_plugin_info, 1) ? join(';', slice(ss_plugin_info, 1)) : null;
+				ss_plugin_opts = ss_plugin_info[1];
 			}
 
 			config = {
@@ -342,6 +342,10 @@ function parse_uri(uri) {
 					config.http_path = params.path ? urldecode(params.path) : null;
 				}
 				break;
+			case 'httpupgrade':
+				config.httpupgrade_host = params.host ? urldecode(params.host) : null;
+				config.http_path = params.path ? urldecode(params.path) : null;
+				break;
 			case 'ws':
 				config.ws_host = params.host ? urldecode(params.host) : null;
 				config.ws_path = params.path ? urldecode(params.path) : null;
@@ -361,7 +365,7 @@ function parse_uri(uri) {
 				return null;
 			}
 
-			/* https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2) */
+			/* https://github.com/2dust/v2rayN/wiki/Description-of-VMess-share-link */
 			try {
 				uri = json(decodeBase64Str(uri[1])) || {};
 			} catch(e) {
@@ -403,7 +407,8 @@ function parse_uri(uri) {
 				transport: (uri.net !== 'tcp') ? uri.net : null,
 				tls: (uri.tls === 'tls') ? '1' : '0',
 				tls_sni: uri.sni || uri.host,
-				tls_alpn: uri.alpn ? split(uri.alpn, ',') : null
+				tls_alpn: uri.alpn ? split(uri.alpn, ',') : null,
+				tls_utls: sing_features.with_utls ? uri.fp : null
 			};
 			switch (uri.net) {
 			case 'grpc':
@@ -413,9 +418,13 @@ function parse_uri(uri) {
 			case 'tcp':
 				if (uri.net === 'h2' || uri.type === 'http') {
 					config.transport = 'http';
-					config.http_host = uri.host ? uri.host.split(',') : null;
+					config.http_host = uri.host ? split(uri.host, ',') : null;
 					config.http_path = uri.path;
 				}
+				break;
+			case 'httpupgrade':
+				config.httpupgrade_host = uri.host;
+				config.http_path = uri.path;
 				break;
 			case 'ws':
 				config.ws_host = uri.host;
@@ -473,7 +482,7 @@ function main() {
 				map(nodes, (_, i) => nodes[i].nodetype = 'sip008');
 		} catch(e) {
 			nodes = decodeBase64Str(res);
-			nodes = nodes ? split(trim(replace(nodes, / /g, '_')), '\n') : {};
+			nodes = nodes ? split(trim(replace(nodes, / /g, '_')), '\n') : [];
 		}
 
 		let count = 0;
